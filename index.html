@@ -30,6 +30,8 @@ details{background:white;border:1px solid #e8dacc;border-radius:12px;padding:18p
 footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size:13px}footer a{color:#fce4c7}.sticky{display:none}
 @media(max-width:760px){header span{display:none}.hero{padding:40px 0 60px}.hero-grid{grid-template-columns:1fr}.stage{max-width:360px;margin:auto}.book{min-height:350px}.book-number{font-size:85px}.cards,.checklist{grid-template-columns:1fr}section{padding:48px 0}.sticky{position:fixed;bottom:0;left:0;right:0;background:white;display:block;padding:9px 14px;box-shadow:0 -4px 25px #0002;z-index:5}.sticky .btn{display:block;padding:13px}.bottom-space{height:70px}}
 .photo-stage{background:linear-gradient(135deg,#fcf4e8,#eebd8a);text-align:center;padding:18px}.ebook-cover{display:block;margin:auto;width:min(100%,300px);height:auto;max-height:485px;object-fit:contain;border-radius:9px;box-shadow:0 12px 30px #34160736}.cover-caption{margin:10px 0 0;color:#5b3723}.real-gallery{background:#fffdf8}.real-photos{max-width:820px;margin:20px auto;border-radius:21px;overflow:hidden;box-shadow:0 12px 32px #58361a24}.real-photo-grid{display:grid;grid-template-columns:repeat(4,1fr);height:235px}.sample{background-repeat:no-repeat;background-size:400% 100%;background-color:#eed9be}@media(max-width:760px){.real-photo-grid{height:130px}.ebook-cover{max-height:420px}}@media(max-width:420px){.real-photo-grid{height:95px}}
+
+.cookie-consent{position:fixed;left:18px;bottom:18px;z-index:100;max-width:425px;background:#fff;color:#251910;border:1px solid #ebd3bc;border-radius:16px;box-shadow:0 16px 45px #25191045;padding:18px 20px;font-size:14px}.cookie-consent p{margin:6px 0 13px}.cookie-consent .cookie-buttons{display:flex;gap:9px;flex-wrap:wrap}.cookie-consent button{border-radius:9px;font-weight:750;cursor:pointer;padding:10px 13px;border:1px solid #bcb0a4;background:#fff;color:#32251b}.cookie-consent .accept{background:#176f3d;color:white;border-color:#176f3d}.cookie-consent[hidden]{display:none}@media(max-width:760px){.cookie-consent{left:10px;right:10px;bottom:76px;max-width:none}}
 </style>
 </head>
 <body>
@@ -59,6 +61,8 @@ footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size
 </main>
 <footer><b>Click & Aprenda</b><p>Produto digital em PDF • Pagamento pela Kiwify</p><p>Antes de anunciar, incluir identificação comercial, contato de suporte e políticas de privacidade e reembolso.</p></footer>
 <div class="sticky"><a class="btn" href="https://pay.kiwify.com.br/M1VfBIl">COMPRAR E-BOOK • R$ 19,90 →</a></div><div class="bottom-space"></div>
+<aside class="cookie-consent" id="cookie-consent" hidden role="dialog" aria-label="Preferências de cookies"><strong>Privacidade e cookies</strong><p>Usamos cookies opcionais da Meta para medir visitas e melhorar nossos anúncios. Você pode aceitar ou recusar o rastreamento publicitário.</p><div class="cookie-buttons"><button type="button" class="accept" id="consent-accept">Aceitar</button><button type="button" id="consent-reject">Recusar</button></div></aside>
+
 <script>
 async function loadBookPhoto(file, selector, asBackground=false){
   try {
@@ -72,4 +76,36 @@ async function loadBookPhoto(file, selector, asBackground=false){
 }
 loadBookPhoto('/assets/capa.base64.txt','#ebook-cover');
 loadBookPhoto('/assets/receitas.base64.txt','.sample',true);
-</script></body></html>
+</script><script>
+(function(){
+  'use strict';
+  var pixelId='906093145230922';
+  var key='clickaprenda_meta_consent_v1';
+  var banner=document.getElementById('cookie-consent');
+  var started=false;
+  function startPixel(){
+    if(started)return;
+    started=true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init',pixelId);
+    fbq('track','PageView');
+  }
+  function persistChoice(choice){
+    try{localStorage.setItem(key,choice)}catch(e){}
+    banner.hidden=true;
+    if(choice==='accepted')startPixel();
+  }
+  document.getElementById('consent-accept').addEventListener('click',function(){persistChoice('accepted')});
+  document.getElementById('consent-reject').addEventListener('click',function(){persistChoice('rejected')});
+  var consent=null;
+  try{consent=localStorage.getItem(key)}catch(e){}
+  if(consent==='accepted')startPixel();
+  else if(consent!=='rejected')banner.hidden=false;
+  document.querySelectorAll('a[href*="pay.kiwify.com.br/M1VfBIl"]').forEach(function(a){
+    a.addEventListener('click',function(){
+      if(started&&typeof window.fbq==='function')window.fbq('track','InitiateCheckout');
+    });
+  });
+})();
+</script>
+</body></html>
