@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Painel privado | Click & Aprenda</title>
+<style>
+:root{--bg:#f8f6f2;--ink:#251910;--accent:#176f3d;--card:#fff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Arial,sans-serif}main{max-width:1000px;padding:32px 18px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:clamp(26px,4vw,39px);line-height:1.15;margin:0}.muted{color:#6a625d}form{background:white;border:1px solid #e7ddd4;padding:20px;border-radius:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:24px 0}label{display:block;font-weight:750;font-size:13px;margin-bottom:6px}.field{flex:1;min-width:200px}input{width:100%;padding:12px;border:1px solid #b5aea6;border-radius:8px;font:inherit}button{background:var(--accent);color:#fff;border:0;padding:13px 20px;border-radius:9px;font:inherit;font-weight:800;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stat{background:var(--card);border:1px solid #e7ddd4;border-radius:14px;padding:18px}.stat strong{display:block;font-size:30px}.stat small{color:#6a625d;font-weight:650}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}.panel{background:white;padding:20px;border:1px solid #e7ddd4;border-radius:14px}.line{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f0e8df}.line:last-child{border:0}.info{padding:14px;background:#fff0d8;border-radius:8px;margin:16px 0;white-space:pre-line}.hidden{display:none!important}footer{margin-top:24px;font-size:13px;color:#655e55}@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}}@media(max-width:400px){.metrics{grid-template-columns:1fr}form{flex-direction:column;align-items:stretch}}
+</style></head>
+<body><main><header><div><p class="muted">CLICK & APRENDA · USO INTERNO</p><h1>Vendas Kiwify</h1><p class="muted">Somente totais e estatísticas, sem dados pessoais dos compradores.</p></div><a href="/">Voltar ao site</a></header>
+<form id="form"><div class="field"><label for="key">Código privado de relatórios</label><input id="key" type="password" autocomplete="off" required placeholder="KIWIFY_REPORT_TOKEN"></div><div class="field"><label for="start">Início</label><input id="start" type="date" required></div><div class="field"><label for="end">Fim</label><input id="end" type="date" required></div><button id="consultar">Consultar vendas</button></form>
+<div id="notice" class="info">As três chaves da Kiwify ficam protegidas na Vercel. Para abrir os números, configure também um código independente chamado KIWIFY_REPORT_TOKEN e digite-o somente aqui.</div>
+<section id="result" class="hidden" aria-live="polite"><div class="metrics"><div class="stat"><small>Pedidos no período</small><strong id="total">—</strong></div><div class="stat"><small>Pagamentos confirmados</small><strong id="paid">—</strong></div><div class="stat"><small>Pendentes</small><strong id="pending">—</strong></div><div class="stat"><small>Reembolsos/chargebacks</small><strong id="refunded">—</strong></div></div><div class="row"><div class="panel"><h2>Por situação</h2><div id="status"></div></div><div class="panel"><h2>Por produto</h2><div id="products"></div></div></div><div class="row"><div class="panel"><h2>Meios de pagamento</h2><div id="methods"></div></div><div class="panel"><h2>Receita líquida informada</h2><strong id="net" style="font-size:32px">—</strong><p class="muted">Soma dos valores líquidos reportados pela API para pedidos pagos; confira taxas e eventuais ajustes no painel financeiro da Kiwify.</p></div></div><p id="meta" class="muted"></p></section>
+<footer>Este painel não mede atribuição publicitária. Na Meta Ads, compras atribuídas podem divergir das vendas totais da Kiwify. Nunca coloque sua API Key aqui.</footer></main>
+<script>
+(function(){
+ const form=document.getElementById('form');
+ const fields={total:'total',paid:'paid',pending:'pending',refunded:'refunded'};
+ const today=new Date(Date.now()-4*3600000).toISOString().slice(0,10);
+ const ago=new Date(Date.parse(today+'T00:00:00Z')-6*86400000).toISOString().slice(0,10);
+ document.getElementById('start').value=ago;
+ document.getElementById('end').value=today;
+ const notice=document.getElementById('notice');
+ function rows(target,data){
+  const box=document.getElementById(target);box.replaceChildren();
+  const items=Object.entries(data||{}).sort((a,b)=>b[1]-a[1]);
+  if(!items.length){box.textContent='Sem registros';return;}
+  for(const [name,count] of items){const line=document.createElement('div');line.className='line';const label=document.createElement('span');label.textContent=name;const value=document.createElement('strong');value.textContent=String(count);line.append(label,value);box.appendChild(line);}
+ }
+ form.addEventListener('submit',async function(e){
+  e.preventDefault();const b=document.getElementById('consultar');b.disabled=true;b.textContent='Consultando…';notice.textContent='Conectando à Kiwify…';
+  document.getElementById('result').classList.add('hidden');
+  const token=document.getElementById('key').value;
+  const q=new URLSearchParams({start:document.getElementById('start').value,end:document.getElementById('end').value});
+  try{
+   const response=await fetch('/api/kiwify-report?'+q,{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+   const data=await response.json();
+   if(!response.ok)throw new Error(data.error||'Falha na consulta');
+   for(const key of Object.keys(fields))document.getElementById(fields[key]).textContent=String(data[key]??'—');
+   rows('status',data.statuses);rows('products',data.products);rows('methods',data.methods);
+   document.getElementById('net').textContent=data.netAmountAvailable?new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(data.netApprovedBrl):'Indisponível';
+   document.getElementById('meta').textContent='Fonte: '+data.source+' · '+data.start+' a '+data.end+' · '+data.pages+' página(s) consultada(s).'+(data.incomplete?' Atenção: resultado parcial por limite de páginas.':'');
+   document.getElementById('result').classList.remove('hidden');notice.textContent='Consulta realizada. Dados atualizados pela API da Kiwify.';
+  }catch(error){notice.textContent='Não foi possível consultar: '+error.message;}
+  finally{b.disabled=false;b.textContent='Consultar vendas';}
+ });
+})();
+</script></body></html>
