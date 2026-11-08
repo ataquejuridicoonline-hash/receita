@@ -42,9 +42,9 @@ module.exports = async function handler(req, res) {
   if (!authorize(req, process.env.KIWIFY_REPORT_TOKEN)) {
     return send(res, 401, { error: 'Acesso restrito. Configure KIWIFY_REPORT_TOKEN no projeto Vercel e informe o código no painel privado.' });
   }
-  const clientId = process.env.KIWIFY_CLIENT_ID;
-  const clientSecret = process.env.KIWIFY_CLIENT_SECRET;
-  const accountId = process.env.KIWIFY_ACCOUNT_ID;
+  const clientId = process.env.KIWIFY_CLIENT_ID || process.env.client_id;
+  const clientSecret = process.env.KIWIFY_CLIENT_SECRET || process.env.client_secret;
+  const accountId = process.env.KIWIFY_ACCOUNT_ID || process.env.account_id;
   if (![clientId, clientSecret, accountId].every(Boolean)) {
     return send(res, 503, { error: 'Configuração incompleta: confira KIWIFY_CLIENT_ID, KIWIFY_CLIENT_SECRET e KIWIFY_ACCOUNT_ID na Vercel.' });
   }
