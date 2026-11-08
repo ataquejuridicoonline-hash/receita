@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Clarity | Painel privado Click & Aprenda</title>
+<style>
+:root{--ink:#211b16;--green:#176f3d;--border:#e6ddd1}*{box-sizing:border-box}body{margin:0;background:#f7f5f0;color:var(--ink);font:16px/1.5 system-ui,-apple-system,Arial,sans-serif}main{max-width:1020px;margin:auto;padding:30px 18px 70px}header{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}header h1{margin:0;font-size:clamp(27px,5vw,40px)}h2{font-size:22px}.muted{color:#625b54}.card{background:white;border:1px solid var(--border);border-radius:16px;padding:21px;box-shadow:0 8px 25px #6b50330b}form{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:25px 0}.field{flex:1;min-width:220px}label{display:block;font-size:13px;font-weight:750;margin-bottom:5px}input,select{width:100%;padding:12px 13px;border:1px solid #b7aea3;border-radius:9px;font:inherit;background:#fff}button{border:0;background:var(--green);color:#fff;padding:13px 21px;border-radius:9px;font:inherit;font-weight:800;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.note{border-radius:12px;padding:14px 17px;background:#fff0d8;color:#533d22;margin:14px 0}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}.kpi{background:#fff;border:1px solid var(--border);border-radius:13px;padding:20px}.kpi small{display:block;color:#6b6258;font-weight:700}.kpi strong{font-size:30px}.metric{margin-top:14px}.metric table{width:100%;border-collapse:collapse;font-size:13px}.metric th,.metric td{border-bottom:1px solid #eee5d9;padding:9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}.metric th{color:#6a6055;font-size:12px}.metric .scroll{overflow:auto;max-height:470px}.hide{display:none!important}.actions{display:flex;gap:14px;flex-wrap:wrap}a{color:#7b411f}footer{font-size:13px;color:#686057;margin-top:30px}@media(max-width:650px){.metrics{grid-template-columns:1fr 1fr}form{display:block}.field{margin-bottom:12px}}@media(max-width:410px){.metrics{grid-template-columns:1fr}}
+</style></head><body><main><header><div><div class="muted">CLICK & APRENDA · PAINEL PRIVADO</div><h1>Comportamento do site</h1><p class="muted">Microsoft Clarity · projeto za6jduedtw</p></div><div class="actions"><a href="/painel-kiwify.html">Vendas Kiwify</a><a href="/">Página de vendas</a></div></header>
+<form class="card" id="form"><div class="field"><label for="key">Código privado de relatórios</label><input type="password" id="key" autocomplete="off" required placeholder="Código KIWIFY_REPORT_TOKEN"></div><div class="field"><label for="days">Período consultado (UTC)</label><select id="days"><option value="1">Últimas 24 horas</option><option value="2">Últimas 48 horas</option><option value="3">Últimas 72 horas</option></select></div><button type="submit" id="load">Consultar Clarity</button></form>
+<div class="note" id="notice">Clique somente quando quiser atualizar: a API oficial permite 10 consultas por dia por projeto. Recarregar a página não consome uma consulta; o botão “Consultar” consome uma.</div>
+<section class="hide" id="result" aria-live="polite"><div class="metrics"><div class="kpi"><small>Sessões registradas</small><strong id="sessions">—</strong></div><div class="kpi"><small>Sessões de robôs (informadas)</small><strong id="bots">—</strong></div><div class="kpi"><small>Métricas disponíveis</small><strong id="count">—</strong></div></div><div id="tables"></div><p class="muted" id="last"></p></section>
+<footer>Não inclui visitantes que recusaram cookies opcionais. A API fornece estatísticas agregadas; mapas de calor e reproduções completas estão no <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener noreferrer">painel do Clarity</a>. O período Clarity é UTC, e cliques em anúncios da Meta não equivalem a sessões carregadas.</footer></main>
+<script>
+(function(){
+ const form=document.getElementById('form');
+ const notice=document.getElementById('notice');
+ const result=document.getElementById('result');
+ const tables=document.getElementById('tables');
+ const fmt=new Intl.NumberFormat('pt-BR');
+ const number=v=>typeof v==='number'&&Number.isFinite(v)?fmt.format(v):String(v??'—');
+ form.addEventListener('submit',async function(e){
+   e.preventDefault();
+   const key=document.getElementById('key').value;
+   const days=document.getElementById('days').value;
+   const button=document.getElementById('load');
+   button.disabled=true;button.textContent='Consultando…';
+   notice.textContent='Consultando a API oficial do Clarity…';
+   result.classList.add('hide');tables.replaceChildren();
+   try {
+     const response=await fetch('/api/clarity-report?days='+encodeURIComponent(days),{headers:{Authorization:'Bearer '+key},cache:'no-store'});
+     let data;try{data=await response.json()}catch(_){throw Error('Resposta inválida da rota de dados. Verifique o deploy.');}
+     if(!response.ok)throw Error(data.error||'Erro na consulta');
+     const traffic=(data.metrics||[]).find(x=>x.name.toLowerCase()==='traffic');
+     const rows=traffic?.information||[];
+     const total=rows.reduce((sum,x)=>sum+Number(x.totalSessionCount||0),0);
+     const bots=rows.reduce((sum,x)=>sum+Number(x.totalBotSessionCount||0),0);
+     document.getElementById('sessions').textContent=rows.length?fmt.format(total):'—';
+     document.getElementById('bots').textContent=rows.length?fmt.format(bots):'—';
+     document.getElementById('count').textContent=String(data.metrics.length);
+     for(const metric of data.metrics){
+       const container=document.createElement('div');container.className='card metric';
+       const title=document.createElement('h2');title.textContent=metric.name;container.appendChild(title);
+       const records=metric.information||[];
+       if(!records.length){container.append('Sem dados para o período.');tables.appendChild(container);continue;}
+       const keys=[...new Set(records.flatMap(r=>Object.keys(r)))].slice(0,20);
+       const scroller=document.createElement('div');scroller.className='scroll';
+       const table=document.createElement('table');
+       const thead=document.createElement('thead');const tr=document.createElement('tr');
+       for(const key of keys){const th=document.createElement('th');th.textContent=key;tr.appendChild(th);}
+       thead.appendChild(tr);table.appendChild(thead);
+       const tbody=document.createElement('tbody');
+       for(const record of records.slice(0,100)){
+         const row=document.createElement('tr');
+         for(const key of keys){const td=document.createElement('td');td.textContent=number(record[key]);row.appendChild(td);}
+         tbody.appendChild(row);
+       }
+       table.appendChild(tbody);scroller.appendChild(table);container.appendChild(scroller);
+       if(records.length>100){const n=document.createElement('p');n.className='muted';n.textContent='Mostrando as primeiras 100 linhas de '+records.length+'.';container.appendChild(n);}
+       tables.appendChild(container);
+     }
+     const when=new Date(data.queriedAt).toLocaleString('pt-BR');
+     document.getElementById('last').textContent='Consulta: '+when+' · últimos '+data.windowHours+'h · dados UTC. Fonte: '+data.source+'.';
+     notice.textContent='Consulta concluída. Dados do Clarity disponíveis abaixo.';
+     result.classList.remove('hide');
+   } catch(err){notice.textContent='Não foi possível consultar: '+err.message;}
+   finally{button.disabled=false;button.textContent='Consultar Clarity';}
+ });
+})();
+</script></body></html>
