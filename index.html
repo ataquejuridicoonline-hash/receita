@@ -67,7 +67,7 @@ footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size
 </main>
 <footer><b>Click & Aprenda</b><p>Air Fryer Todo Dia • E-book digital em PDF • Pagamento único de R$ 19,90 pela Kiwify</p><nav aria-label="Informações ao comprador"><a href="/atendimento.html">Atendimento</a> · <a href="/reembolso.html">Reembolso e direito de arrependimento</a> · <a href="/privacidade.html">Privacidade</a> · <a href="#" id="cookie-preferences">Alterar preferências de cookies</a></nav><p>Suporte: <a href="mailto:ataquejuridicoonline@gmail.com">ataquejuridicoonline@gmail.com</a></p></footer>
 <div class="sticky"><a class="btn" href="https://pay.kiwify.com.br/M1VfBIl">COMPRAR E-BOOK • R$ 19,90 →</a></div><div class="bottom-space"></div>
-<aside class="cookie-consent" id="cookie-consent" hidden role="dialog" aria-label="Preferências de cookies"><strong>Privacidade e cookies</strong><p>Usamos cookies opcionais da Meta para medir visitas e melhorar nossos anúncios. Você pode aceitar ou recusar o rastreamento publicitário.</p><div class="cookie-buttons"><button type="button" class="accept" id="consent-accept">Aceitar</button><button type="button" id="consent-reject">Recusar</button></div></aside>
+<aside class="cookie-consent" id="cookie-consent" hidden role="dialog" aria-label="Preferências de cookies"><strong>Privacidade e cookies</strong><p>Com sua autorização, usamos Meta Pixel e Microsoft Clarity para medir anúncios, cliques, rolagem e navegação (incluindo mapas de calor e reprodução de sessões). Você pode recusar esse rastreamento opcional.</p><div class="cookie-buttons"><button type="button" class="accept" id="consent-accept">Aceitar</button><button type="button" id="consent-reject">Recusar</button></div></aside>
 
 <script>
 (function(){
@@ -76,6 +76,50 @@ footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size
   var key='clickaprenda_meta_consent_v1';
   var banner=document.getElementById('cookie-consent');
   var started=false;
+  var clarityStarted=false;
+  var sentEvents=Object.create(null);
+  function startClarity(){
+    if(clarityStarted)return;
+    clarityStarted=true;
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,"clarity","script","za6jduedtw");
+  }
+  function trackBehavior(name){
+    if(!clarityStarted||sentEvents[name])return;
+    sentEvents[name]=true;
+    if(typeof window.clarity==='function')window.clarity('event',name);
+  }
+  function observeSection(selector,eventName){
+    var element=document.querySelector(selector);
+    if(!element)return;
+    if(!('IntersectionObserver' in window))return;
+    var obs=new IntersectionObserver(function(entries){
+      if(entries.some(function(entry){return entry.isIntersecting;})){
+        trackBehavior(eventName);obs.disconnect();
+      }
+    },{threshold:0.25});
+    obs.observe(element);
+  }
+  function startBehaviorTracking(){
+    startClarity();
+    observeSection('#amostra','recipe_preview_view');
+    observeSection('#oferta','offer_view');
+    var scrollSent=false;
+    function onScroll(){
+      if(scrollSent)return;
+      var root=document.documentElement;
+      var available=root.scrollHeight-window.innerHeight;
+      if(available>0 && window.scrollY>=available*0.5){
+        scrollSent=true;trackBehavior('scroll_50');
+        window.removeEventListener('scroll',onScroll);
+      }
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
   function startPixel(){
     if(started)return;
     started=true;
@@ -86,18 +130,19 @@ footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size
   function persistChoice(choice){
     try{localStorage.setItem(key,choice)}catch(e){}
     banner.hidden=true;
-    if(choice==='accepted')startPixel();
+    if(choice==='accepted'){startPixel();startBehaviorTracking();}
   }
   document.getElementById('consent-accept').addEventListener('click',function(){persistChoice('accepted')});
   document.getElementById('consent-reject').addEventListener('click',function(){persistChoice('rejected')});
   var consent=null;
   try{consent=localStorage.getItem(key)}catch(e){}
-  if(consent==='accepted')startPixel();
+  if(consent==='accepted'){startPixel();startBehaviorTracking();}
   else if(consent!=='rejected')banner.hidden=false;
   var preferences=document.getElementById('cookie-preferences');
   if(preferences)preferences.addEventListener('click',function(e){e.preventDefault();try{localStorage.removeItem(key)}catch(err){}location.reload()});
   document.querySelectorAll('a[href*="pay.kiwify.com.br/M1VfBIl"]').forEach(function(a){
     a.addEventListener('click',function(){
+      if(clarityStarted && typeof window.clarity==='function')window.clarity('event','checkout_click');
       if(started&&typeof window.fbq==='function')window.fbq('trackCustom','CheckoutClick',{product:'air-fryer-todo-dia',value:19.90,currency:'BRL'});
     });
   });
