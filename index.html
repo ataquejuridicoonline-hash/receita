@@ -140,6 +140,66 @@ footer{background:#2d211b;color:#f0dfd1;text-align:center;padding:30px;font-size
   else if(consent!=='rejected')banner.hidden=false;
   var preferences=document.getElementById('cookie-preferences');
   if(preferences)preferences.addEventListener('click',function(e){e.preventDefault();try{localStorage.removeItem(key)}catch(err){}location.reload()});
+  // Diagnóstico local opcional: somente ?diagnostico=1, sem transmissão de resultados.
+  if(new URLSearchParams(window.location.search).get('diagnostico')==='1'){
+    var panel=document.createElement('section');
+    panel.id='diagnostico-local';
+    panel.setAttribute('aria-label','Diagnóstico de carregamento e eventos');
+    panel.style.cssText='position:fixed;z-index:999999;top:8px;right:8px;left:8px;max-width:540px;max-height:85vh;overflow:auto;margin-left:auto;padding:15px;background:#fff;color:#1b1b1b;border:2px solid #202020;border-radius:12px;box-shadow:0 12px 30px #0005;font:13px/1.45 system-ui,sans-serif;';
+    var heading=document.createElement('strong');
+    heading.textContent='Diagnóstico local — Air Fryer';
+    var note=document.createElement('p');
+    note.textContent='Este painel não envia os resultados para nenhum servidor. Não é uma medida de todos os visitantes.';
+    var pre=document.createElement('pre');
+    pre.style.cssText='font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:12px;border-radius:8px;';
+    var actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:8px';
+    var refresh=document.createElement('button');refresh.type='button';refresh.textContent='Atualizar diagnóstico';
+    var copy=document.createElement('button');copy.type='button';copy.textContent='Copiar resultado';
+    var close=document.createElement('button');close.type='button';close.textContent='Fechar';
+    [refresh,copy,close].forEach(function(b){b.style.cssText='padding:9px;border:1px solid #aaa;border-radius:8px;background:#f6f6f6;cursor:pointer;color:#111';actions.appendChild(b);});
+    panel.appendChild(heading);panel.appendChild(note);panel.appendChild(pre);panel.appendChild(actions);
+    document.body.appendChild(panel);
+    function measure(){
+      var choice='não decidido';
+      try{choice=localStorage.getItem(key)||'não decidido'}catch(err){choice='armazenamento indisponível'}
+      var nav=performance.getEntriesByType('navigation')[0];
+      var resources=performance.getEntriesByType('resource');
+      var pixelResource=resources.filter(function(x){return x.name.indexOf('connect.facebook.net/en_US/fbevents.js')>=0});
+      var clarityResource=resources.filter(function(x){return x.name.indexOf('clarity.ms/tag/za6jduedtw')>=0});
+      var metaBeacon=resources.filter(function(x){return x.name.indexOf('facebook.com/tr?')>=0 || x.name.indexOf('facebook.com/tr/')>=0});
+      var pixelReady=typeof window.fbq==='function'&&typeof window.fbq.callMethod==='function';
+      var result=[
+        'Origem: '+location.origin,
+        'Página: '+location.pathname,
+        'Carregamento do documento: '+document.readyState,
+        'Resposta HTTP da navegação: '+(nav&&nav.responseStatus?nav.responseStatus:'não disponível pelo navegador'),
+        'Tempo até DOM pronto: '+(nav&&nav.domContentLoadedEventEnd?Math.round(nav.domContentLoadedEventEnd)+' ms':'não disponível'),
+        'Tempo até load: '+(nav&&nav.loadEventEnd?Math.round(nav.loadEventEnd)+' ms':'ainda não concluído'),
+        'Consentimento opcional: '+choice,
+        'Pixel inicializado pelo site: '+(started?'sim':'não'),
+        'Biblioteca do Pixel pronta: '+(pixelReady?'sim':'não / não permitido'),
+        'Requisições vistas da biblioteca Pixel: '+pixelResource.length,
+        'Requisições vistas do rastreador Meta: '+metaBeacon.length,
+        'Clarity inicializado pelo site: '+(clarityStarted?'sim':'não'),
+        'Requisições vistas da biblioteca Clarity: '+clarityResource.length,
+        'Aviso de cookies visível: '+(!banner.hidden?'sim':'não'),
+        'Botões de checkout: '+document.querySelectorAll('a[href*="pay.kiwify.com.br/M1VfBIl"]').length,
+        'Observação: bloqueadores, consentimento e limitações do Resource Timing podem ocultar requisições.'
+      ];
+      pre.textContent=result.join('\n');
+    }
+    refresh.addEventListener('click',measure);
+    copy.addEventListener('click',function(){
+      var output=pre.textContent;
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(output).then(function(){copy.textContent='Copiado';},function(){copy.textContent='Selecione o texto para copiar';});
+      else copy.textContent='Selecione o texto para copiar';
+    });
+    close.addEventListener('click',function(){panel.remove();});
+    document.getElementById('consent-accept').addEventListener('click',function(){setTimeout(measure,1200)});
+    document.getElementById('consent-reject').addEventListener('click',measure);
+    window.addEventListener('load',function(){setTimeout(measure,500)});
+    measure();
+  }
   document.querySelectorAll('a[href*="pay.kiwify.com.br/M1VfBIl"]').forEach(function(a){
     a.addEventListener('click',function(){
       if(clarityStarted && typeof window.clarity==='function')window.clarity('event','checkout_click');
